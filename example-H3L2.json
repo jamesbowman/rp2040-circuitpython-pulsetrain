@@ -1,0 +1,11 @@
+{
+  signal: [
+    { name: 'output', wave: 'h..l.h..l.h..l.' },
+  ],
+  head:{
+    text:'PulseTrain "H 3 L 2"',
+    tick:0,
+    every:1
+  },
+  config: { hscale: 1 }
+}
