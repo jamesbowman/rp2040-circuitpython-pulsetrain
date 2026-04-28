@@ -4,7 +4,6 @@
 # Wire RP2040 GP0 to CH32 SWIO/PD1 and share ground. Use 3.3 V only.
 
 import array
-import time
 
 import board
 from adafruit_pioasm import Program
@@ -38,6 +37,11 @@ public opDelay:
 delay:
     jmp x-- delay
 {next}
+
+public opI:
+    set pindirs, 0
+    in pins, 1
+{next}
 """
 
 src = src1
@@ -57,6 +61,9 @@ for (i,opcode) in enumerate(pt.assembled):
     if insn == 0:
         cond = ['', '!x', 'x--', '!y', 'y--', 'x!=y', 'pin', '!osre'][f1]
         dis = f"jmp {cond} {f2}"
+    elif insn == 2:
+        src = ['pins', 'x', 'y', 'null', '?', 'status', 'isr', 'osr'][f1]
+        dis = f"in {src} {f2}"
     elif insn == 3:
         dst = ['pins', 'x', 'y', 'null', 'pindirs', 'pc', 'isr', 'exec'][f1]
         dis = f"out {dst} {f2}"
@@ -77,19 +84,27 @@ print()
 sm = StateMachine(
     pt.assembled,
     frequency=PIO_FREQUENCY,
+    first_in_pin=SWIO_PIN,
+    in_pin_count=1,
     first_set_pin=SWIO_PIN,
     set_pin_count=1,
-    fifo_type="tx",
+    fifo_type="txrx",
     auto_pull=True,
     pull_threshold=5,
     out_shift_right=True,
+    auto_push=True,
+    push_threshold=8,
+    in_shift_right=True,
     **pt.pio_kwargs
 )
 
-delay_words = array.array("I", [l['opL'], l['opH']] * 100)
 D = 7
-delay_words = array.array("I", [l['opL'], l['opDelay'], D, l['opH']] * 1000)
-print(f"{delay_words=}")
+input_bits = [l['opI']] * 8
+program_words = array.array("I", [l['opL'], l['opDelay'], D] + input_bits + [l['opH']])
+input_bytes = bytearray(1)
+print(f"{program_words=}")
 
 while True:
-    sm.write(delay_words)
+    sm.write(program_words)
+    sm.readinto(input_bytes)
+    print(f"{input_bytes[0]:08b}")
