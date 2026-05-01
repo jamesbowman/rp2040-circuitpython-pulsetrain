@@ -1,6 +1,6 @@
 {
   signal: [
-    { name: 'output', wave: 'h..l.h..l.h..l.' },
+    { name: 'output', wave: 'h...l..h...l..' },
   ],
   head:{
     text:'PulseTrain "H 3 L 2"',
