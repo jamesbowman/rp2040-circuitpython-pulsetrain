@@ -4,7 +4,7 @@ from rp2pio import StateMachine
 
 import pt1
 
-def compile(model, s):
+def _compile(model, s):
     r = []
     sym = model.PUBLIC_LABELS
     i = 0
@@ -49,9 +49,22 @@ class PulseTrain:
         )
         self.model = pt1
 
+    def compile(self, s):
+        return _compile(self.model, s)
+
+    def join(self, ss):
+        total = sum([len(x) for x in ss])
+        out = array.array('I', [0]) * total
+        i = 0
+        for arr in ss:
+            n = len(arr)
+            out[i:i+n] = arr
+            i += n
+        return out
+
     def source_or_binary(self, x):
         if isinstance(x, str):
-            return compile(self.model, x)
+            return self.compile(x)
         else:
             return x
 
