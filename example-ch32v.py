@@ -1,4 +1,3 @@
-import array
 import time
 import struct
 
@@ -92,7 +91,7 @@ CH32V003_W_16BIT = (
 class CH32VDebug:
     def __init__(self, pin=board.GP0):
         self.pt = pulsetrain.PulseTrain(pin, freq=4_000_000, read_little_endian = False)
-        self.seq = array.array("I")
+        self.seq = []
         self.prog_buf = None
 
         # Source-to-target bits:
@@ -102,13 +101,13 @@ class CH32VDebug:
         #   pull low 250ns, wait, sample, then let the
         #   target release the line before the next bit.
 
-        self.bit0 = pulsetrain.compile(self.pt.model, "L 2 H")
-        self.bit1 = pulsetrain.compile(self.pt.model, "L H")
+        self.bit0 = self.pt.compile("L 2 H")
+        self.bit1 = self.pt.compile("L H")
 
-        self.readbit = pulsetrain.compile(self.pt.model, "L z i 2")
+        self.readbit = self.pt.compile("L z i 2")
 
         # 2 us is 8 ticks
-        self.packet_gap = pulsetrain.compile(self.pt.model, "H 8")
+        self.packet_gap = self.pt.compile("H 8")
 
         self.reset()
         self.swio_write_reg(0x7E, 0x5AA50400)
@@ -124,13 +123,13 @@ class CH32VDebug:
     #
 
     def clear(self):
-        self.seq = array.array("I")
+        self.seq = []
 
     def append(self, seq):
-        self.seq.extend(seq)
+        self.seq.append(seq)
 
     def drive(self):
-        self.pt.drive(self.seq)
+        self.pt.drive(self.pt.join(self.seq))
 
     def _bits_msb_first(self, value, width):
         for bit in range(width - 1, -1, -1):

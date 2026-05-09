@@ -1,16 +1,15 @@
-import array
 import board
 from rp2pio import StateMachine
 
 import pt1
 
 def _compile(model, s):
-    r = []
+    r = bytearray()
     sym = model.PUBLIC_LABELS
     i = 0
     while i < len(s):
         c = s[i]
-        if c in "HLzi":
+        if c in sym:
             r.append(sym[c])
             i += 1
         elif c.isdigit():
@@ -20,14 +19,19 @@ def _compile(model, s):
             n = int(s[i:j])
             if n == 0:
                 raise ValueError("delay must be greater than zero")
+            count = 3 * (n - 1)
+            while count > 255:
+                r.append(sym['Delay'])
+                r.append(255)
+                count -= 255
             r.append(sym['Delay'])
-            r.append(3 * (n - 1))
+            r.append(count)
             i = j
         elif c.isspace():
             i += 1
         else:
             raise ValueError(f"unexpected character {c!r} at offset {i}")
-    return array.array('I', r)
+    return bytes(r)
 
 class PulseTrain:
     def __init__(self, pin, freq, read_little_endian = True):
@@ -53,14 +57,7 @@ class PulseTrain:
         return _compile(self.model, s)
 
     def join(self, ss):
-        total = sum([len(x) for x in ss])
-        out = array.array('I', [0]) * total
-        i = 0
-        for arr in ss:
-            n = len(arr)
-            out[i:i+n] = arr
-            i += n
-        return out
+        return b''.join(ss)
 
     def source_or_binary(self, x):
         if isinstance(x, str):

@@ -26,7 +26,7 @@ public opz:
 {NEXT}
 
 public opDelay:
-    out x, 32
+    out x, 8
 delay:
     jmp x-- delay
 {NEXT}
