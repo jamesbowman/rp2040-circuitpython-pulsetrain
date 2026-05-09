@@ -1,0 +1,12 @@
+{
+  signal: [
+    { name: '0 code', wave: 'hl.'},
+    { name: '1 code', wave: 'h.l'},
+  ],
+  head: {
+    text: 'NeoPixel bit timing',
+    tick: 0,
+    every: 1
+  },
+  config: { hscale: 1 }
+}

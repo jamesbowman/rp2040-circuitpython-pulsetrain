@@ -1,0 +1,11 @@
+{
+  signal: [
+    { name: 'neopixel', wave: 'hl.h.lhl.hl.h.lh.lhl.hl.hl.h.lhl.h.lhl.h.lh.lh.lhl.hl.h.lhl.h.lh.lhl.hl.hhhh'},
+  ],
+  head: {
+    text: 'NeoPixel example 24-bit packet',
+    tick: 0,
+    every: 1
+  },
+  config: { hscale: 1 }
+}
