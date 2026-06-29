@@ -1,3 +1,4 @@
+import sys
 import time
 import struct
 
@@ -109,6 +110,14 @@ class CH32VDebug:
         # 2 us is 8 ticks
         self.packet_gap = self.pt.compile("H 8")
 
+        self.readbody = self.pt.join([self.bit0, 32 * self.readbit, self.packet_gap])
+
+        self.regs = []
+        for i in range(128):
+            self.clear()
+            self._send_nbit(i, 7)
+            self.regs.append(self.pt.join(self.seq))
+
         self.reset()
         self.swio_write_reg(0x7E, 0x5AA50400)
         self.swio_write_reg(0x7D, 0x5AA50400)
@@ -139,24 +148,24 @@ class CH32VDebug:
         for bit in self._bits_msb_first(x, n):
             self.append(self.bit1 if bit else self.bit0)
 
-    def swio_write_reg(self, address, value):
+    def _swio_write_reg(self, address, value):
         # print(f"Write {address:x} {value:x}")
         self.clear()
         self.append(self.bit1)  # start bit
-        self._send_nbit(address, 7)
+        self.append(self.regs[address])
         self.append(self.bit1)  # write
         self._send_nbit(value, 32)
         self.append(self.packet_gap)
-        self.drive()
+        return self.pt.join(self.seq)
+
+    def swio_write_reg(self, address, value):
+        self.pt.drive(self._swio_write_reg(address, value))
 
     def swio_read_reg(self, address):
         self.clear()
         self.append(self.bit1)  # start bit
-        self._send_nbit(address, 7)
-        self.append(self.bit0)  # read
-        for _ in range(32):
-            self.append(self.readbit)
-        self.append(self.packet_gap)
+        self.append(self.regs[address])
+        self.append(self.readbody)  # read
         self.drive()
 
         rx = self.pt.read(4)
@@ -355,10 +364,40 @@ class CH32VDebug:
             hex_bytes = " ".join("%02x" % b for b in data)
             print("%08x: %s" % (base + offset, hex_bytes))
 
+    def terminal(self):
+        self.swio_write_reg(DEG_Abst_CMDAUTO, 0)
+        tot = 0
+        t0 = time.monotonic()
+        acks = self._swio_write_reg(DEG_Abst_DATA1, 0) + self._swio_write_reg(DEG_Abst_DATA0, 0)
+        while 1:
+            rr = self.swio_read_reg(DEG_Abst_DATA0)
+            if rr & 0x80:
+                n = (rr & 0xf)-4
+                tot += n
+                if n:
+                    frag = ((rr >> 8).to_bytes(3, byteorder="little")[:n])
+                    if n > 3:
+                        d1 = self.swio_read_reg(DEG_Abst_DATA1)
+                        frag += (d1.to_bytes(4, byteorder="little")[:(n - 3)])
+                    if 0:
+                        print(f"{n=} {frag=}")
+                    else:
+                        sys.stdout.write(frag)
+                self.pt.drive(acks)
+                if tot >= 7000:
+                    break
+        t1 = time.monotonic()
+        took = t1 - t0
+        print()
+        print('took', took)
+        print(f"{tot/took:.1f} bytes/s")
 
 debug = CH32VDebug()
-debug.load_flash_image("blink-small.bin")
+if 0:
+    debug.load_flash_image("blink-small.bin")
 debug.run()
+if 1:
+    debug.terminal()
 
 while True:
     time.sleep(1)
